@@ -20,6 +20,7 @@ This is a backend project for an e-commerce platform, built with **Node.js**, **
 express-postgres-ecommerce/
 
 │
+
 ├── controllers/ # All business logic
 
 ├── models/ # Sequelize models
