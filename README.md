@@ -1,6 +1,6 @@
 # 🛒 Express E-commerce Backend API
 
-This is a backend project for an e-commerce platform, built with **Node.js**, **Express**, **PostgreSQL**, **Sequelize ORM**, and **Redis** for caching frequent reads.
+This is a backend project for an e-commerce platform, built with **Node.js**, **Express.js**, **PostgreSQL**, **Sequelize ORM**, and **Redis** for caching frequent reads.
 
 ---
 
