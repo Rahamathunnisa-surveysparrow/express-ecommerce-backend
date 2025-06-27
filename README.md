@@ -18,6 +18,7 @@ This is a backend project for an e-commerce platform, built with **Node.js**, **
 ## 📁 Folder Structure
 
 express-postgres-ecommerce/
+
 │
 ├── controllers/ # All business logic
 
