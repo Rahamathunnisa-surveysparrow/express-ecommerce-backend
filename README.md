@@ -20,14 +20,23 @@ This is a backend project for an e-commerce platform, built with **Node.js**, **
 express-postgres-ecommerce/
 │
 ├── controllers/ # All business logic
+
 ├── models/ # Sequelize models
+
 ├── routes/ # Express route definitions
+
 ├── middlewares/ # Custom middlewares (auth, validation, etc.)
+
 ├── utils/ # Utility files like Redis client
+
 ├── config/ # DB and Sequelize config
+
 ├── server.js # Entry point
+
 ├── .env # Environment variables (not committed)
+
 ├── .gitignore
+
 └── README.md
 
 ---
