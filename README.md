@@ -34,24 +34,43 @@ This project is a backend system for an e-commerce platform, built with **Node.j
 ## Folder Structure
 
 express-postgres-ecommerce/
+
 │
+
 ├── controllers/ # Business logic for each feature
+
 ├── routes/ # Express route definitions
+
 ├── models/ # Sequelize models and associations
+
 ├── validators/ # Input validation schemas
+
 ├── middlewares/ # JWT authentication, validation middleware
+
 ├── utils/ # Redis caching, email, pagination helpers
+
 ├── bull/
+
 │ ├── queue/ # Bull queues
+
 │ ├── jobs/ # Job definitions
+
 │ └── processors/ # Job processors
+
 ├── hooks/ # Sequelize hooks for business logic
+
 ├── config/ # Sequelize and DB config
+
 ├── scripts/ # Utility scripts (e.g., clean queues)
+
 ├── migrations/ # Sequelize CLI migrations
+
 ├── server.js # Application entry point
+
 ├── .env # Environment variables
+
 └── .gitignore
+
 
 ---
 
