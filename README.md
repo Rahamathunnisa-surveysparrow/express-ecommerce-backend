@@ -132,8 +132,8 @@ To improve performance for repeated GET requests:
 ## Development and Testing
 
 - All routes are tested using Postman
-- Database state is verified using pgAdmin
-- Emails are tested using Mailtrap
+- Database state is verified using postico (previously using pgAdmin)
+- Emails were tested using Mailtrap
 - Redis logs and cache hits/misses are logged in the console
 
 ---
