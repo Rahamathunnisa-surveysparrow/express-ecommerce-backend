@@ -30,47 +30,27 @@ This project is a backend system for an e-commerce platform, built with **Node.j
 - express-validator (Request validation)
 
 ---
-
 ## Folder Structure
 
-express-postgres-ecommerce/
+The project is organized using the MVC pattern, with additional layers for background jobs, validations, and utilities.
 
-│
-
-├── controllers/ # Business logic for each feature
-
-├── routes/ # Express route definitions
-
-├── models/ # Sequelize models and associations
-
-├── validators/ # Input validation schemas
-
-├── middlewares/ # JWT authentication, validation middleware
-
-├── utils/ # Redis caching, email, pagination helpers
-
-├── bull/
-
-│ ├── queue/ # Bull queues
-
-│ ├── jobs/ # Job definitions
-
-│ └── processors/ # Job processors
-
-├── hooks/ # Sequelize hooks for business logic
-
-├── config/ # Sequelize and DB config
-
-├── scripts/ # Utility scripts (e.g., clean queues)
-
-├── migrations/ # Sequelize CLI migrations
-
-├── server.js # Application entry point
-
-├── .env # Environment variables
-
-└── .gitignore
-
+- **controllers/** – Business logic for each feature
+- **routes/** – Express route definitions
+- **models/** – Sequelize models and associations
+- **validators/** – Request validation schemas using express-validator
+- **middlewares/** – JWT authentication and validation middleware
+- **utils/** – Reusable logic for Redis caching, email, and pagination
+- **bull/**
+  - **queue/** – Bull queue setup for jobs
+  - **jobs/** – Job configuration for status and cancellation
+  - **processors/** – Processors for Bull job execution
+- **hooks/** – Sequelize lifecycle hooks for orders
+- **config/** – Sequelize configuration and database credentials
+- **scripts/** – One-time utilities like cleaning queues
+- **migrations/** – Sequelize CLI migration files
+- **server.js** – Main entry point for Express app
+- **.env** – Environment variables (excluded in version control)
+- **.gitignore** – Git ignored files
 
 ---
 
