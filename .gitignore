@@ -2,3 +2,9 @@ node_modules/
 .env
 .DS_Store
 *.log
+# .gitignore additions
+redis-7.2.4/
+redis-stable/
+redis-7.2.4.tar.gz
+redis-stable.tar.gz
+dump.rdb

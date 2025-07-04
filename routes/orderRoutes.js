@@ -1,52 +1,79 @@
-const express = require("express");
+// routes/orderRoutes.js
+const express = require('express');
 const router = express.Router();
+const authenticateCustomer = require('../middlewares/authMiddleware');
 const orderController = require('../controllers/orderController');
-const authMiddleware = require("../middlewares/authMiddleware");
-const { body, validationResult } = require('express-validator');
+const { param, body } = require('express-validator');
+const orderValidator = require('../validators/orderValidator');
 
-const { createOrder, getOrdersByCustomer } = require("../controllers/orderController");
+// Public Routes (optional - can be restricted if needed)
+router.get('/', orderController.getAllOrders);
 
-// Create order (with auth + validation)
+// Protected Routes
+
+// Get orders by customer (only their own)
+router.get(
+  '/customer/:id',
+  [param('id').isInt().withMessage('Invalid customer ID')],
+  authenticateCustomer,
+  orderController.getOrdersByCustomer
+);
+
+// Get order by ID (only if owned by the customer)
+router.get(
+  '/:id',
+  [param('id').isInt().withMessage('Invalid order ID')],
+  authenticateCustomer,
+  orderController.getOrderById
+);
+
+// Create a new order
 router.post(
   '/',
-  authMiddleware,
-  [
-    body('customer_id')
-      .isInt({ gt: 0 })
-      .withMessage('Customer ID must be a positive integer'),
-
-    body('items')
-      .isArray({ min: 1 })
-      .withMessage('Items must be a non-empty array'),
-
-    body('items.*.product_id')
-      .isInt({ gt: 0 })
-      .withMessage('Each item must have a valid product_id'),
-
-    body('items.*.quantity')
-      .isFloat({ gt: 0 })
-      .withMessage('Each item must have a positive quantity'),
-
-    body('items.*.price')
-      .isFloat({ gt: 0 })
-      .withMessage('Each item must have a valid price')
-  ],
+  orderValidator.createOrderRules,
+  authenticateCustomer,
   orderController.createOrder
 );
 
+// Full update (PUT) of an order
+router.put(
+  '/:id',
+  [
+    param('id').isInt().withMessage('Invalid order ID'),
+    ...orderValidator.updateOrderRules
+  ],
+  authenticateCustomer,
+  orderController.updateOrder
+);
 
+// Partial update (PATCH) - only status
+router.patch(
+  '/:id',
+  [
+    param('id').isInt().withMessage('Invalid order ID'),
+    body('status')
+      .optional()
+      .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
+      .withMessage('Invalid order status')
+  ],
+  authenticateCustomer,
+  orderController.patchOrderStatus
+);
 
-// Get orders by customer ID
-router.get("/customer/:id", authMiddleware, getOrdersByCustomer);
+// Soft delete an order
+router.delete(
+  '/:id',
+  [param('id').isInt().withMessage('Invalid order ID')],
+  authenticateCustomer,
+  orderController.softDeleteOrder
+);
 
-// Add this line to fetch all orders (protected or public)
-router.get('/', orderController.getAllOrders);
-
-// Create order
-router.post("/", authMiddleware, createOrder);
-
-// Delete order by ID (no auth required here; add auth if needed)
-const { deleteOrder } = require('../controllers/orderController');
-router.delete('/:id', orderController.deleteOrder);
+// Restore a soft-deleted order
+router.post(
+  '/:id/restore',
+  [param('id').isInt().withMessage('Invalid order ID')],
+  authenticateCustomer,
+  orderController.restoreOrder
+);
 
 module.exports = router;

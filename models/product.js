@@ -16,18 +16,23 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(10, 2), 
       allowNull: false 
     },
-    quantity: { 
-      type: DataTypes.INTEGER, 
-      defaultValue: 0 
-    },
-    created_at: { 
-      type: DataTypes.DATE, 
-      defaultValue: DataTypes.NOW 
-    },
+    stock: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    }
   }, {
     tableName: "products",
-    timestamps: false,
+    timestamps: true,
+    paranoid: true,
+    underscored: true
   });
+
+  Product.associate = models => {
+    Product.hasMany(models.OrderItem, {
+      foreignKey: 'product_id',
+      as: 'orderItems'
+    });
+  };
 
   return Product;
 };
