@@ -52,20 +52,20 @@ const createOrder = async (req, res) => {
       await order.update({ total_price: total }, { transaction: t });
 
       const customer = await Customer.findByPk(customer_id);
-      if (customer) {
-        await sendEmail({
-          to: customer.email,
-          subject: 'Order Confirmation',
-          html: `
-            <h2>Order Confirmation</h2>
-            <p>Dear ${customer.name},</p>
-            <p>Your order <strong>#${order.id}</strong> has been placed successfully.</p>
-            <p>Total Amount: ₹${total.toFixed(2)}</p>
-            <p>Status: <strong>${order.status.toUpperCase()}</strong></p>
-            <p>Thank you for shopping with us!</p>
-          `
-        });
-      }
+      // if (customer) {
+      //   await sendEmail({
+      //     to: customer.email,
+      //     subject: 'Order Confirmation',
+      //     html: `
+      //       <h2>Order Confirmation</h2>
+      //       <p>Dear ${customer.name},</p>
+      //       <p>Your order <strong>#${order.id}</strong> has been placed successfully.</p>
+      //       <p>Total Amount: ₹${total.toFixed(2)}</p>
+      //       <p>Status: <strong>${order.status.toUpperCase()}</strong></p>
+      //       <p>Thank you for shopping with us!</p>
+      //     `
+      //   });
+      // }
 
       t.afterCommit(() => {
         scheduleStatusUpdateJob(order.id, 'pending');
@@ -85,9 +85,14 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    if (!req.customer.isAdmin) {
-      return res.status(403).json({ error: 'Access denied: Admins only' });
-    }
+
+    if (!req.customer) {
+  return res.status(401).json({ error: 'Unauthorized: No customer attached' });
+}
+
+    // if (!req.customer.isAdmin) {
+    //   return res.status(403).json({ error: 'Access denied: Admins only' });
+    // }
 
     const { limit, offset, page } = paginate(req);
     const { count, rows } = await Order.findAndCountAll({
@@ -121,9 +126,9 @@ const getAllOrders = async (req, res) => {
 
 const getOrdersByStatus = async (req, res) => {
   const { status } = req.params;
-  if (!req.customer.isAdmin) {
-    return res.status(403).json({ error: 'Access denied: Admins only' });
-  }
+  // if (!req.customer.isAdmin) {
+  //   return res.status(403).json({ error: 'Access denied: Admins only' });
+  // }
 
   const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
   if (!validStatuses.includes(status)) {

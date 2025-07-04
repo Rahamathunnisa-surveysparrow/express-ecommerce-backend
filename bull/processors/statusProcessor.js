@@ -1,8 +1,6 @@
 // bull/processors/statusProcessor.js
 const { Order, Customer } = require('../../models');
 const sendEmail = require('../../utils/sendEmail');
-// const { scheduleStatusUpdateJob } = require('../jobs/statusUpdateJob');
-
 
 module.exports = async (job) => {
   const { orderId, targetStatus } = job.data;
@@ -25,7 +23,6 @@ module.exports = async (job) => {
     }
 
     await order.update({ status: targetStatus });
-
     console.log(`✅ Order #${orderId} status updated to ${targetStatus}`);
 
     await sendEmail({
@@ -35,7 +32,6 @@ module.exports = async (job) => {
     });
 
     if (targetStatus !== 'delivered') {
-      // Lazy load to avoid circular require
       const { scheduleStatusUpdateJob } = require('../jobs/statusUpdateJob');
       await scheduleStatusUpdateJob(orderId, targetStatus);
     }
@@ -45,4 +41,3 @@ module.exports = async (job) => {
     throw err;
   }
 };
-

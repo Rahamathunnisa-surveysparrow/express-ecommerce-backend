@@ -1,30 +1,25 @@
+// bull/index.js
 const Queue = require('bull');
+const Redis = require('ioredis');
 const statusUpdateProcessor = require('./processors/statusProcessor');
 const cancelProcessor = require('./processors/cancelProcessor');
-const Redis = require('ioredis');
 
 const connection = new Redis();
 
-const statusUpdateQueue = new Queue('orderStatusQueue', {
-  redis: connection,
-});
-const cancelOrderQueue = new Queue('cancelOrderQueue', {
-  redis: connection,
-});
+const statusUpdateQueue = new Queue('orderStatusQueue', { redis: connection });
+const cancelOrderQueue = new Queue('cancelOrderQueue', { redis: connection });
 
-// REGISTER NAMED JOB PROCESSOR with name statusUpdate
+// Register processors
 statusUpdateQueue.process('statusUpdate', statusUpdateProcessor);
 cancelOrderQueue.process(cancelProcessor);
 
-// Optional logs
+// Logging
 statusUpdateQueue.on('active', job => {
-  console.log(`📦 Processing status update job #${job.id} for order #${job.data.orderId}`);
+  console.log(`✅ ✅ ✅ Processing status update job #${job.id} for order #${job.data.orderId}`);
 });
-
-statusUpdateQueue.on('completed', (job, result) => {
+statusUpdateQueue.on('completed', job => {
   console.log(`✅ Job #${job.id} completed for order #${job.data.orderId}`);
 });
-
 statusUpdateQueue.on('failed', (job, err) => {
   console.error(`❌ Job #${job.id} failed:`, err.message);
 });
@@ -37,6 +32,5 @@ console.log("🚀 Bull worker started and queues are now listening...");
 
 module.exports = {
   statusUpdateQueue,
-  cancelOrderQueue,
-  getStatusQueue: () => statusUpdateQueue
+  cancelOrderQueue
 };

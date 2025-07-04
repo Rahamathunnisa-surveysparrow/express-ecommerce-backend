@@ -1,14 +1,15 @@
 // routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
+const auth = require('../middlewares/authMiddleware');
 const authenticateCustomer = require('../middlewares/authMiddleware');
 const orderController = require('../controllers/orderController');
 const { param, body } = require('express-validator');
 const orderValidator = require('../validators/orderValidator');
 
 // Public Routes (optional - can be restricted if needed)
-router.get('/', orderController.getAllOrders);
-
+router.get('/', authenticateCustomer, orderController.getAllOrders);
+ 
 // Protected Routes
 
 // Get orders by customer (only their own)
@@ -25,6 +26,14 @@ router.get(
   [param('id').isInt().withMessage('Invalid order ID')],
   authenticateCustomer,
   orderController.getOrderById
+);
+
+// Get order by status (only if owned by the customer)
+router.get(
+  '/status/:status',
+  [param('status').isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid status')],
+  authenticateCustomer,
+  orderController.getOrdersByStatus
 );
 
 // Create a new order
