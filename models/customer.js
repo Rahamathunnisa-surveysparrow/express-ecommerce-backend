@@ -1,5 +1,4 @@
-const { Sequelize } = require("sequelize");
-const bcrypt = require("bcrypt");
+const registerCustomerHooks = require('../hooks/customerHooks');
 
 module.exports = (sequelize, DataTypes) => {
   const Customer = sequelize.define(
@@ -32,43 +31,16 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-  // Associations
-  Customer.associate = models => {
+  Customer.associate = (models) => {
     Customer.hasMany(models.Order, {
       foreignKey: 'customer_id',
       as: 'orders'
     });
+
+    // ✅ Register hooks with models passed
+    registerCustomerHooks(Customer, models);
   };
 
-  // Automatically hash password before saving
-  Customer.beforeCreate(async (customer) => {
-    if (customer.password) {
-      customer.password = await bcrypt.hash(customer.password, 10);
-    }
-  });
-
-  Customer.beforeUpdate(async (customer) => {
-    if (customer.changed('password')) {
-      customer.password = await bcrypt.hash(customer.password, 10);
-    }
-  });
-
-  // Prevent deletion if undelivered orders exist
-  Customer.beforeDestroy(async (customer, options) => {
-    const orders = await customer.getOrders({
-      where: {
-        status: {
-          [Sequelize.Op.not]: 'delivered'
-        }
-      }
-    });
-
-    if (orders.length > 0) {
-      throw new Error('Cannot delete customer with undelivered orders');
-    }
-  });
-
-  // Automatically remove password from API responses
   Customer.prototype.toJSON = function () {
     const values = { ...this.get() };
     delete values.password;

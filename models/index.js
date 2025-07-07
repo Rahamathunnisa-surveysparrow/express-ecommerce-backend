@@ -17,16 +17,6 @@ const Product = require("./product")(sequelize, Sequelize.DataTypes);
 const Order = require("./order")(sequelize, Sequelize.DataTypes);
 const OrderItem = require("./order_item")(sequelize, Sequelize.DataTypes);
 
-// Define associations with aliases
-Customer.hasMany(Order, { foreignKey: "customer_id", as: "orders" });
-Order.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
-
-Order.hasMany(OrderItem, { foreignKey: "order_id", as: "items" });
-OrderItem.belongsTo(Order, { foreignKey: "order_id", as: "order" });
-
-Product.hasMany(OrderItem, { foreignKey: "product_id", as: "orderItems" });
-OrderItem.belongsTo(Product, { foreignKey: "product_id", as: "product" });
-
 const db = {
   sequelize,
   Sequelize,
@@ -35,5 +25,12 @@ const db = {
   Order,
   OrderItem,
 };
+
+// Call `.associate()` from each model
+Object.values(db).forEach((model) => {
+  if (model.associate) {
+    model.associate(db);
+  }
+});
 
 module.exports = db;

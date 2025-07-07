@@ -1,5 +1,5 @@
 // bull/jobs/statusUpdateJob.js
-const { statusUpdateQueue } = require('../index'); // ✅ Import shared queue
+const { statusUpdateQueue } = require('../index'); // Import shared queue
 
 const getNextStatus = (currentStatus) => {
   const statuses = ['pending', 'processing', 'shipped', 'delivered'];
@@ -18,7 +18,7 @@ const scheduleStatusUpdateJob = async (orderId, currentStatus = 'pending') => {
       targetStatus: nextStatus,
     },
     {
-      delay: 60 * 60 * 1000,
+      delay: 2 * 60 * 1000,
       attempts: 3,
       backoff: { type: 'fixed', delay: 10000 },
       removeOnComplete: true,

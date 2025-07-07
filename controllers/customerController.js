@@ -1,7 +1,7 @@
 const { Customer } = require('../models');
 const paginate = require('../utils/paginate');
 
-// ✅ Get all customers (admin only or internal usage)
+// Get all customers (admin only or internal usage)
 const getAllCustomers = async (req, res) => {
   try {
     // Optionally restrict to admins only
@@ -30,7 +30,7 @@ const getAllCustomers = async (req, res) => {
   }
 };
 
-// ✅ Get single customer by ID (only owner can view)
+// Get single customer by ID (only owner can view)
 const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -52,7 +52,7 @@ const getCustomerById = async (req, res) => {
   }
 };
 
-// ✅ Full update (PUT)
+// Full update (PUT)
 const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -76,7 +76,7 @@ const updateCustomer = async (req, res) => {
   }
 };
 
-// ✅ Partial update (PATCH)
+// Partial update (PATCH)
 const patchCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -100,7 +100,7 @@ const patchCustomer = async (req, res) => {
   }
 };
 
-// ✅ Soft delete customer (only self)
+// Soft delete customer (only self)
 const softDeleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -123,28 +123,43 @@ const softDeleteCustomer = async (req, res) => {
   }
 };
 
-// ✅ Restore soft-deleted customer (only self)
+// Restore soft-deleted customer (only self)
 const restoreCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const requestingCustomerId = req.customer.id;
+
+    console.log("🧾 Requested ID:", id);
+    console.log("🔐 Authenticated User ID:", requestingCustomerId);
+
+
+    console.log("Token belongs to:", requestingCustomerId);
+    console.log("Request param id:", id);
 
     if (parseInt(id) !== requestingCustomerId) {
       return res.status(403).json({ error: 'Access denied: You can only restore your own account' });
     }
 
     const customer = await Customer.findByPk(id, { paranoid: false });
+    console.log("🔍 Raw customer from DB:", customer);
+    console.log("🔍 Looking for customer ID:", id);
+    console.log("🧠 Fetched customer:", customer);
+
+
     if (!customer) {
+      console.log("No customer found, even including soft-deleted ones.");
       return res.status(404).json({ message: 'Customer not found' });
     }
 
     await customer.restore();
-    res.status(200).json({ message: 'Customer restored successfully', customer });
+    return res.status(200).json({ message: 'Customer restored successfully', customer });
+
   } catch (err) {
     console.error("❌ Error restoring customer:", err);
-    res.status(500).json({ error: 'Failed to restore customer' });
+    return res.status(500).json({ error: 'Failed to restore customer' });
   }
 };
+
 
 module.exports = {
   getAllCustomers,

@@ -1,3 +1,5 @@
+const registerOrderItemHooks = require('../hooks/orderItemHooks');
+
 module.exports = (sequelize, DataTypes) => {
   const OrderItem = sequelize.define(
     'OrderItem',
@@ -31,28 +33,21 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-OrderItem.afterCreate(async (item, options) => {
-  const order = await item.getOrder({
-    include: [{ model: sequelize.models.OrderItem, as: 'items' }]
-  });
+  // ✅ Associations
+  OrderItem.associate = (models) => {
+    OrderItem.belongsTo(models.Order, {
+      foreignKey: 'order_id',
+      as: 'order'
+    });
 
-  if (!order || !order.items) return; // Prevent crash if null
+    OrderItem.belongsTo(models.Product, {
+      foreignKey: 'product_id',
+      as: 'product'
+    });
+  };
 
-  const total = order.items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
-  await order.update({ total_price: total });
-});
-
-OrderItem.afterDestroy(async (item, options) => {
-  const order = await item.getOrder({
-    include: [{ model: sequelize.models.OrderItem, as: 'items' }]
-  });
-
-  if (!order || !order.items) return; // Prevent crash if null
-
-  const total = order.items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
-  await order.update({ total_price: total });
-});
-
+  // ✅ Register hooks
+  registerOrderItemHooks(OrderItem, sequelize);
 
   return OrderItem;
 };

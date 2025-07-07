@@ -1,8 +1,8 @@
 // routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
-const auth = require('../middlewares/authMiddleware');
-const authenticateCustomer = require('../middlewares/authMiddleware');
+// const auth = require('../middlewares/authMiddleware');
+const { authenticateCustomer } = require('../middlewares/authMiddleware');
 const orderController = require('../controllers/orderController');
 const { param, body } = require('express-validator');
 const orderValidator = require('../validators/orderValidator');

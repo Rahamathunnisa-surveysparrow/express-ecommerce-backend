@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authenticateCustomer = require('../middlewares/authMiddleware');
+const { authenticateCustomer, allowSoftDeletedCustomer } = require('../middlewares/authMiddleware');
 const customerController = require('../controllers/customerController');
 const { param } = require('express-validator');
 const { updateCustomerRules, fullUpdateCustomerRules } = require('../validators/customerValidator');
@@ -52,13 +52,13 @@ router.delete(
   customerController.softDeleteCustomer
 );
 
-// Restore soft-deleted customer
 router.post(
   '/:id/restore',
   [param('id').isInt().withMessage('Invalid customer ID')],
   validateRequest,
-  authenticateCustomer,
+  allowSoftDeletedCustomer, // instead of authenticateCustomer
   customerController.restoreCustomer
 );
+
 
 module.exports = router;

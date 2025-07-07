@@ -1,31 +1,30 @@
 const bcrypt = require("bcrypt");
 
 const registerCustomerHooks = (CustomerModel, models) => {
-  // Auto-hash password before creating
+  const { Sequelize } = models;
+
+  // Hash password before creating a customer
   CustomerModel.beforeCreate(async (customer) => {
     if (customer.password) {
       customer.password = await bcrypt.hash(customer.password, 10);
     }
   });
 
-  // Auto-hash password before updating if changed
+  // Hash password before updating a customer if changed
   CustomerModel.beforeUpdate(async (customer) => {
     if (customer.changed('password')) {
       customer.password = await bcrypt.hash(customer.password, 10);
     }
   });
 
-  // Prevent deletion if undelivered orders exist
-  CustomerModel.beforeDestroy(async (customer) => {
-    const { Order } = models; // ✅ Access Order model safely here
-    const Sequelize = models.Sequelize; // ✅ Safely get Sequelize if needed
-
+  // Prevent deletion if the customer has undelivered orders
+  CustomerModel.beforeDestroy(async (customer, options) => {
     const orders = await customer.getOrders({
       where: {
         status: {
-          [Sequelize.Op.not]: 'delivered'
-        }
-      }
+          [Sequelize.Op.not]: 'delivered',
+        },
+      },
     });
 
     if (orders.length > 0) {

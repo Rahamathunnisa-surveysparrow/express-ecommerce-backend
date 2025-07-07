@@ -1,8 +1,9 @@
 const { Order, OrderItem, Product, sequelize, Customer } = require('../models');
-const sendEmail = require('../utils/sendEmail');
+// const sendEmail = require('../utils/sendEmail');
 const { scheduleStatusUpdateJob } = require('../bull/jobs/statusUpdateJob');
 const redisClient = require('../utils/redisClient'); 
 const paginate = require('../utils/paginate');
+const sendPaginatedResponse = require('../utils/sendPaginatedResponse');
 const { invalidateOrderCache } = require('../utils/cacheHelpers');
 // const { validationResult } = require('express-validator');
 // const cancelOrderJob = require('../bull/jobs/cancelOrderJob');
@@ -51,7 +52,7 @@ const createOrder = async (req, res) => {
 
       await order.update({ total_price: total }, { transaction: t });
 
-      const customer = await Customer.findByPk(customer_id);
+      // const customer = await Customer.findByPk(customer_id);
       // if (customer) {
       //   await sendEmail({
       //     to: customer.email,
@@ -126,9 +127,6 @@ const getAllOrders = async (req, res) => {
 
 const getOrdersByStatus = async (req, res) => {
   const { status } = req.params;
-  // if (!req.customer.isAdmin) {
-  //   return res.status(403).json({ error: 'Access denied: Admins only' });
-  // }
 
   const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
   if (!validStatuses.includes(status)) {
@@ -136,8 +134,17 @@ const getOrdersByStatus = async (req, res) => {
   }
 
   try {
-    const orders = await Order.findAll({
-      where: { status },
+    const { limit, offset, page } = paginate(req);
+
+    const { count, rows } = await Order.findAndCountAll({
+      where: {
+        customer_id: req.customer.id,
+        status,
+        deleted_at: null
+      },
+      limit,
+      offset,
+      order: [['created_at', 'DESC']],
       include: [
         { model: Customer, as: 'customer', attributes: ['id', 'name', 'email'] },
         {
@@ -146,10 +153,9 @@ const getOrdersByStatus = async (req, res) => {
           include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
         }
       ],
-      order: [['createdAt', 'DESC']]
     });
 
-    res.status(200).json({ orders });
+    return sendPaginatedResponse(res, 'orders', rows, count, limit, page);
   } catch (err) {
     console.error('❌ Error fetching orders by status:', err);
     res.status(500).json({ error: 'Server error while fetching orders by status' });

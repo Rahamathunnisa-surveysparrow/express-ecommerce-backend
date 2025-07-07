@@ -1,3 +1,5 @@
+const registerOrderHooks = require('../hooks/orderHooks');
+
 module.exports = (sequelize, DataTypes) => {
   const Order = sequelize.define(
     'Order',
@@ -30,26 +32,13 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-
-    // ⬇️ Association goes here
   Order.associate = function (models) {
     Order.belongsTo(models.Customer, { foreignKey: 'customer_id', as: 'customer' });
     Order.hasMany(models.OrderItem, { foreignKey: 'order_id', as: 'items' });
   };
-  
-Order.beforeDestroy(async (order, options) => {
-  if (order.status === 'delivered') {
-    throw new Error('Delivered orders cannot be cancelled or deleted');
-  }
-});
 
-
-  Order.afterCreate(async (order, options) => {
-    console.log(`Order #${order.id} created for customer #${order.customer_id}`);
-  });
+  // Register model-specific hooks
+  registerOrderHooks(Order);
 
   return Order;
 };
-
-
-
