@@ -168,8 +168,10 @@ const getOrderById = async (req, res) => {
   const cacheKey = `order:${orderId}`;
 
   try {
+    // Check Redis
     const cached = await redisClient.get(cacheKey);
     if (cached) {
+      console.log(`📦 Redis cache HIT for ${cacheKey}`);
       const parsed = JSON.parse(cached);
       if (parsed.customer_id !== customerId) {
         return res.status(403).json({ error: 'Access denied: Not your order' });
@@ -177,6 +179,9 @@ const getOrderById = async (req, res) => {
       return res.status(200).json(parsed);
     }
 
+    console.log(`🚫 Redis cache MISS for ${cacheKey}, fetching from DB`);
+
+    // Query DB
     const order = await Order.findOne({
       where: { id: orderId },
       include: [
@@ -195,7 +200,15 @@ const getOrderById = async (req, res) => {
     }
 
     const result = order.toJSON();
-    await redisClient.set(cacheKey, JSON.stringify(result), 'EX', 300);
+
+    // Store in Redis
+    await redisClient.
+    set(cacheKey, JSON.stringify(result), {
+      EX: 300, // Expires in 300 seconds
+    });
+
+    console.log(`✅ Cached order in Redis as ${cacheKey} (expires in 300s)`);
+
     res.status(200).json(result);
 
   } catch (err) {
@@ -326,7 +339,7 @@ const softDeleteOrder = async (req, res) => {
     await order.update({ status: 'cancelled' }, { transaction });
     await order.destroy({ transaction });
 
-    await invalidateOrderCache(order.id);
+    await invalidateOrderCache(order.id); // Invalidate Cache when order is soft deleted
 
     await transaction.commit();
     res.status(200).json({ message: 'Order soft-deleted and stock restored' });
@@ -368,7 +381,7 @@ const restoreOrder = async (req, res) => {
     }
 
 
-    await invalidateOrderCache(order.id);
+    await invalidateOrderCache(order.id); // Invalidate Cache when order is restored
     // Set status back to 'pending'
     await order.update({ status: 'pending' }, { transaction });
 

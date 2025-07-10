@@ -7,6 +7,9 @@ const {
   createProductRules,
   updateProductRules,
   partialUpdateProductRules } = require('../validators/productValidator');
+const { searchProducts } = require('../controllers/productController');
+
+router.get('/search', productController.searchProducts); // /products/search?query=laptop
 
 
 // Get all products

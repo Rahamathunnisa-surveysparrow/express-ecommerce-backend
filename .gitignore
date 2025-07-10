@@ -1,10 +1,23 @@
+# Dependency folders
 node_modules/
+
+#Secrets
 .env
+
+# System files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+
 # .gitignore additions
 redis-7.2.4/
 redis-stable/
 redis-7.2.4.tar.gz
 redis-stable.tar.gz
 dump.rdb
+
+# Binaries
+elasticsearch-*/
+elasticsearch-*.tar.gz

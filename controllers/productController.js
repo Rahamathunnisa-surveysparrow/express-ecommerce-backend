@@ -1,5 +1,7 @@
 const { Product } = require('../models');
 const paginate = require('../utils/paginate');
+const redisClient = require('../utils/redisClient');
+const client = require('../elasticsearch/client');
 
 const getAllProducts = async (req, res) => {
   try {
@@ -8,7 +10,7 @@ const getAllProducts = async (req, res) => {
     const { count, rows } = await Product.findAndCountAll({
       limit,
       offset,
-      where: { deletedAt: null }, // if using soft delete
+      where: { deletedAt: null },
       order: [['createdAt', 'DESC']],
     });
 
@@ -21,22 +23,33 @@ const getAllProducts = async (req, res) => {
         totalPages,
         perPage: limit,
         totalItems: count,
-
       },
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch products', details: err.message });
   }
 };
-
-// Get one product
+// Get one product with cache
 const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+    const cacheKey = `product:${id}`;
+
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      console.log(`🔁 Served product ${id} from cache`);
+      return res.status(200).json(JSON.parse(cached));
+    }
+
     const product = await Product.findByPk(id, { paranoid: false });
 
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
+    await redisClient.set(cacheKey, JSON.stringify(product), {
+      EX: 300, // cache for 5 minutes
+    });
+
+    console.log(`📦 Cached product ${id}`);
     res.json(product);
   } catch (error) {
     console.error("❌ Error fetching product:", error);
@@ -44,11 +57,9 @@ const getProductById = async (req, res) => {
   }
 };
 
-// Create a new product
 const createProduct = async (req, res) => {
   try {
     const { name, description, price, stock } = req.body;
-
     const product = await Product.create({ name, description, price, stock });
     res.status(201).json({ message: 'Product created successfully', product });
   } catch (error) {
@@ -57,7 +68,6 @@ const createProduct = async (req, res) => {
   }
 };
 
-// Update entire product (PUT)
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -74,7 +84,6 @@ const updateProduct = async (req, res) => {
   }
 };
 
-// Partial update (PATCH)
 const patchProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -91,7 +100,6 @@ const patchProduct = async (req, res) => {
   }
 };
 
-// Soft-delete product
 const softDeleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -99,7 +107,7 @@ const softDeleteProduct = async (req, res) => {
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    await product.destroy(); // Will set deletedAt if paranoid: true
+    await product.destroy();
     res.json({ message: 'Product soft-deleted' });
   } catch (error) {
     console.error("❌ Error deleting product:", error);
@@ -107,7 +115,6 @@ const softDeleteProduct = async (req, res) => {
   }
 };
 
-// Restore soft-deleted product
 const restoreProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -123,6 +130,37 @@ const restoreProduct = async (req, res) => {
   }
 };
 
+const searchProducts = async (req, res) => {
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: 'Missing search query' });
+  }
+
+  try {
+    const result = await client.search({
+      index: 'products',
+      query: {
+        multi_match: {
+          query,
+          fields: ['name^2', 'description'], // ^2 boosts name relevance
+          fuzziness: 'auto'
+        }
+      }
+    });
+
+    const hits = result.hits.hits.map(hit => ({
+      id: hit._id,
+      ...hit._source
+    }));
+
+    return res.json({ results: hits });
+  } catch (err) {
+    console.error('Elasticsearch search error:', err);
+    return res.status(500).json({ message: 'Search failed' });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -130,5 +168,6 @@ module.exports = {
   updateProduct,
   patchProduct,
   softDeleteProduct,
-  restoreProduct
+  restoreProduct,
+  searchProducts,
 };

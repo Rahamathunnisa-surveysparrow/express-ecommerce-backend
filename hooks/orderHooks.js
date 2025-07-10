@@ -1,37 +1,40 @@
-const bcrypt = require("bcrypt");
+const { invalidateOrderCache } = require('../utils/cacheHelpers');
+const { scheduleStatusUpdateJob } = require('../bull/jobs/statusUpdateJob');
 
-const registerCustomerHooks = (CustomerModel, models) => {
-  // Auto-hash password before creating
-  CustomerModel.beforeCreate(async (customer) => {
-    if (customer.password) {
-      customer.password = await bcrypt.hash(customer.password, 10);
-    }
+const registerOrderHooks = (OrderModel, models) => {
+  // 🔁 After order is created
+  OrderModel.afterCreate(async (order) => {
+    console.log(`📝 Order created with ID: ${order.id}`);
+
+    // Invalidate Redis cache (precautionary — should be empty on create)
+    await invalidateOrderCache(order.id);
+
+    // Schedule status update job
+    scheduleStatusUpdateJob(order.id, order.status || 'pending');
   });
 
-  // Auto-hash password before updating if changed
-  CustomerModel.beforeUpdate(async (customer) => {
-    if (customer.changed('password')) {
-      customer.password = await bcrypt.hash(customer.password, 10);
-    }
+  // 🔄 After order update
+  OrderModel.afterUpdate(async (order) => {
+    console.log(`✏️ Order updated. ID: ${order.id}, Status: ${order.status}`);
+
+    await invalidateOrderCache(order.id);
   });
 
-  // Prevent deletion if undelivered orders exist
-  CustomerModel.beforeDestroy(async (customer) => {
-    const { Order } = models; // ✅ Access Order model safely here
-    const Sequelize = models.Sequelize; // ✅ Safely get Sequelize if needed
+  // 🗑️ After soft delete
+  OrderModel.afterDestroy(async (order) => {
+    console.log(`🗑️ Order soft-deleted. ID: ${order.id}`);
 
-    const orders = await customer.getOrders({
-      where: {
-        status: {
-          [Sequelize.Op.not]: 'delivered'
-        }
-      }
-    });
+    await invalidateOrderCache(order.id);
+  });
 
-    if (orders.length > 0) {
-      throw new Error('Cannot delete customer with undelivered orders');
-    }
+  // ♻️ After restore
+  OrderModel.afterRestore(async (order) => {
+    console.log(`♻️ Order restored. ID: ${order.id}`);
+
+    await invalidateOrderCache(order.id);
+
+    // Job will also be scheduled from controller after transaction.commit
   });
 };
 
-module.exports = registerCustomerHooks;
+module.exports = registerOrderHooks;

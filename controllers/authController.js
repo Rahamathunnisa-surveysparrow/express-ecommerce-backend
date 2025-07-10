@@ -1,9 +1,10 @@
 const { Customer } = require("../models");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const registerCustomer = async (req, res) => {
   const { name, email, password } = req.body;
-  console.log("Register route hit");
+  console.log("📨 Register route hit");
 
   try {
     if (!name || !email || !password) {
@@ -14,14 +15,14 @@ const registerCustomer = async (req, res) => {
     const existing = await Customer.findOne({ where: { email }, paranoid: false });
     if (existing) {
       if (existing.deleted_at) {
-        return res.status(400).json({ error: "This email was previously used and deleted, try to restore the account if you like!" });
+        return res.status(400).json({ error: "This email was previously used and deleted. Try restoring the account." });
       }
-      return res.status(400).json({ error: "Email already registered, try Logging in!" });
+      return res.status(400).json({ error: "Email already registered. Try logging in!" });
     }
 
     // Create customer (password will be hashed by model hook)
     const customer = await Customer.create({ name, email, password });
-    console.log("New customer created:", customer.toJSON());
+    console.log("✅ New customer created:", customer.toJSON());
 
     res.status(201).json({
       message: "Customer registered successfully",
@@ -37,14 +38,14 @@ const registerCustomer = async (req, res) => {
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(400).json({ error: "Email already exists, try a different email" });
     }
-    console.error("Registration error:", err);
+    console.error("❌ Registration error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const loginCustomer = async (req, res) => {
   const { email, password } = req.body;
-  console.log("Login route hit");
+  console.log("🔐 Login route hit");
 
   try {
     if (!email || !password) {
@@ -56,7 +57,6 @@ const loginCustomer = async (req, res) => {
       return res.status(400).json({ error: "Invalid email" });
     }
 
-    const bcrypt = require("bcrypt");
     const isMatch = await bcrypt.compare(password, customer.password);
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid password" });
@@ -68,13 +68,15 @@ const loginCustomer = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    console.log(`✅ Login successful for ${email}`);
+
     res.json({
       message: "Login successful!",
       token
     });
 
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("❌ Login error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
