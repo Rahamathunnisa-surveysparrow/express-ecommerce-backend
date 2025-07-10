@@ -15,7 +15,7 @@ This project is a backend system for an e-commerce platform, built with **Node.j
 - Redis caching for frequent GET endpoints
 - Sequelize hooks for data integrity and business logic enforcement
 - Comprehensive validations with express-validator
-
+- Elasticsearch Product Search
 ---
 
 ## Tech Stack
@@ -27,6 +27,7 @@ This project is a backend system for an e-commerce platform, built with **Node.j
 - Bull (Queue system for background jobs)
 - Mailtrap (SMTP email testing)
 - JWT (Authentication)
+- Elasticsearch
 - express-validator (Request validation)
 
 ---
@@ -94,6 +95,7 @@ To improve performance for repeated GET requests:
 ### Products
 
 - `GET /api/products`
+- `GET /api/products/search`(Search products using **Elasticsearch**)
 - `GET /api/products/:id`
 - `POST /api/products`
 - `PUT /api/products/:id`
