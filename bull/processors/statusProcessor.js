@@ -1,20 +1,17 @@
-// bull/processors/statusProcessor.js
-
-const { Order, Customer } = require('../../models');
-const sendEmail = require('../../utils/sendEmail');
-const { scheduleStatusUpdateJob } = require('../jobs/statusUpdateJob');
-
 module.exports = async (job) => {
   const { orderId, targetStatus } = job.data;
 
   console.log(`🚚 Running statusProcessor for order #${orderId}, target status: ${targetStatus}`);
 
   try {
+    const { Order, Customer } = require('../../models');
+    const { scheduleStatusUpdateJob } = require('../jobs/statusUpdateJob');
+
     const order = await Order.findByPk(orderId, {
       include: {
         model: Customer,
         as: 'customer',
-        paranoid: false // Fetch even soft-deleted customers
+        paranoid: false,
       }
     });
 
@@ -24,36 +21,25 @@ module.exports = async (job) => {
     }
 
     if (order.deletedAt || order.status === 'cancelled') {
-      console.warn(`⛔ Order #${orderId} is deleted or cancelled. Skipping...`);
+      console.warn(`⛔ Order #${orderId} is either deleted or cancelled. Skipping...`);
       return;
     }
 
     if (order.status === 'delivered') {
-      console.log(`✅ Order #${orderId} already delivered. No update needed.`);
+      console.log(`✅ Order #${orderId} has been successfully delivered!!!`);
+      console.log("================================================================================================="); // For readability in bull worker tab in terminal
       return;
     }
 
-    // Update order status
     await order.update({ status: targetStatus });
     console.log(`✅ Order #${orderId} status updated to ${targetStatus}`);
+    console.log("================================================================================================="); // for readability in main server tab in terminal
 
-    // Safe email sending
-    if (order.customer) {
-      await sendEmail({
-        to: order.customer.email,
-        subject: `Your order #${order.id} is now ${targetStatus}`,
-        html: `<p>Hi ${order.customer.name},</p>
-               <p>Your order status is now <strong>${targetStatus.toUpperCase()}</strong>.</p>
-               <p>Thank you for shopping with us!</p>`
-      });
-    } else {
-      console.warn(`⚠️ No customer found for order #${orderId}. Email not sent.`);
-    }
-
-    // Schedule next status update if not final
     if (targetStatus !== 'delivered') {
       await scheduleStatusUpdateJob(orderId, targetStatus);
     }
+
+    // Email sending is commented for now (you can re-enable it when needed)
 
   } catch (err) {
     console.error(`❌ Error in statusProcessor for order #${orderId}:`, err);

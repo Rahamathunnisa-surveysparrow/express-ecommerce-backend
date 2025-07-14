@@ -1,4 +1,4 @@
-// bull/queues/cancelQueue.js
+// bull/queue/cancelQueue.js
 const Queue = require('bull');
 const Redis = require('ioredis');
 const connection = new Redis();

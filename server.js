@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
+const syncProductsToElasticsearch = require('./elasticsearch/syncProducts');
 
 // MIDDLEWARE: Required to read JSON body
 app.use(express.json());
@@ -26,10 +27,18 @@ app.use('/api/orders', orderRoutes);
 const productRoutes = require("./routes/productRoutes");
 app.use("/api/products", productRoutes);
 
-app.use('/api', require('./routes/searchRoutes'));
+// app.use('/api', require('./routes/searchRoutes'));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+  // Sync Elasticsearch index after server starts
+  await syncProductsToElasticsearch();
+});
+
 
 // Default error handler (optional)
 app.use((req, res) => {
@@ -41,16 +50,19 @@ TERMINAL COMMANDS
 
 NAV: shaik.rahamathunnisa@SSLAP0339 express-postgres-ecommerce %
 
-  Terminal: psql:
-    psql -U postgres -d ecommerce_db
+  Terminal: Redis:
+      ./redis-7.2.4/src/redis-server
 
-  Terminal: node:
-    node server.js
+  Terminal Elastic Search:
+      cd ~/elasticsearch-8.13.0
+      ./bin/elasticsearch
 
   Terminal: bull:
-    node bull/index.js
+      node bull/index.js
 
-  Terminal: Redis:
-    ./redis-7.2.4/src/redis-server
+  Terminal: node:
+      node server.js
 
+  Terminal: psql:
+    psql -U postgres -d ecommerce_db
 */
