@@ -32,7 +32,7 @@ module.exports = async (job) => {
     }
 
     await order.update({ status: targetStatus });
-    console.log(`✅ Order #${orderId} status updated to ${targetStatus}`);
+    console.log(`--------------- ✅ Order #${orderId} status updated to ${targetStatus} ---------------`);
     console.log("================================================================================================="); // for readability in main server tab in terminal
 
     if (targetStatus !== 'delivered') {
