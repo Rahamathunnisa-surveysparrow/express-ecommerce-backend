@@ -178,7 +178,7 @@ const getOrderById = async (req, res) => {
       }
       return res.status(200).json(parsed);
     }
-
+    // Using Cache when accessing order information
     console.log(`🚫 Redis cache MISS for ${cacheKey}, fetching from DB`);
 
     // Query DB
@@ -202,8 +202,7 @@ const getOrderById = async (req, res) => {
     const result = order.toJSON();
 
     // Store in Redis
-    await redisClient.
-    set(cacheKey, JSON.stringify(result), {
+    await redisClient.set(cacheKey, JSON.stringify(result), {
       EX: 300, // Expires in 300 seconds
     });
 

@@ -50,19 +50,19 @@ TERMINAL COMMANDS
 
 NAV: shaik.rahamathunnisa@SSLAP0339 express-postgres-ecommerce %
 
-  Terminal: Redis:
+  Terminal 1: Redis:
       ./redis-7.2.4/src/redis-server
 
-  Terminal Elastic Search:
+  Terminal 2: Elastic Search:
       cd ~/elasticsearch-8.13.0
       ./bin/elasticsearch
 
-  Terminal: bull:
+  Terminal 3: Bull Worker:
       node bull/index.js
 
-  Terminal: node:
+  Terminal 4: Main server:
       node server.js
 
-  Terminal: psql:
+  Terminal 5: psql: (optional)
     psql -U postgres -d ecommerce_db
 */

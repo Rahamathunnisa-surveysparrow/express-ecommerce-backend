@@ -1,5 +1,5 @@
-const statusUpdateQueue = require('./queue/statusQueue'); // fixed path
-const cancelOrderQueue = require('./queue/cancelQueue');  // if you have it
+const statusUpdateQueue = require('./queue/statusQueue'); 
+const cancelOrderQueue = require('./queue/cancelQueue');  
 
 const getStatusQueue = () => statusUpdateQueue;
 const getCancelQueue = () => cancelOrderQueue;

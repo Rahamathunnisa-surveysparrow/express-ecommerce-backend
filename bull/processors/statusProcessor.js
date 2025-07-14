@@ -1,7 +1,9 @@
 module.exports = async (job) => {
   const { orderId, targetStatus } = job.data;
 
-  console.log(`🚚 Running statusProcessor for order #${orderId}, target status: ${targetStatus}`);
+  console.log("\n" + "🟡".repeat(80));
+  console.log(`🚚 [START] statusProcessor for Order #${orderId} → Target Status: ${targetStatus}`);
+  console.log("🟡".repeat(80));
 
   try {
     const { Order, Customer } = require('../../models');
@@ -11,7 +13,7 @@ module.exports = async (job) => {
       include: {
         model: Customer,
         as: 'customer',
-        paranoid: false,
+        paranoid: false
       }
     });
 
@@ -26,23 +28,29 @@ module.exports = async (job) => {
     }
 
     if (order.status === 'delivered') {
-      console.log(`✅ Order #${orderId} has been successfully delivered!!!`);
-      console.log("================================================================================================="); // For readability in bull worker tab in terminal
+      console.log(`✅ Order #${orderId} has already been delivered. No further updates.`);
+      return;
+    }
+
+    if (order.status === targetStatus) {
+      console.log(`🔁 Order #${orderId} is already in status "${targetStatus}". Skipping update.`);
       return;
     }
 
     await order.update({ status: targetStatus });
-    console.log(`--------------- ✅ Order #${orderId} status updated to ${targetStatus} ---------------`);
-    console.log("================================================================================================="); // for readability in main server tab in terminal
+    console.log(`✅✅✅ Status updated for Order #${orderId}: ${targetStatus.toUpperCase()}`);
 
+    // Schedule next update
     if (targetStatus !== 'delivered') {
       await scheduleStatusUpdateJob(orderId, targetStatus);
     }
 
-    // Email sending is commented for now (you can re-enable it when needed)
-
   } catch (err) {
-    console.error(`❌ Error in statusProcessor for order #${orderId}:`, err);
+    console.error(`❌ Error in statusProcessor for Order #${orderId}:`, err);
     throw err;
+  } finally {
+    console.log("🟢".repeat(80));
+    console.log(`✅ [END] statusProcessor finished for Order #${orderId}`);
+    console.log("🟢".repeat(80) + "\n");
   }
 };

@@ -46,7 +46,7 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
-  // ✅ Register hooks
+  // Register hooks
   registerOrderItemHooks(OrderItem, sequelize);
 
   return OrderItem;

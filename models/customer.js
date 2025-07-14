@@ -37,12 +37,12 @@ module.exports = (sequelize, DataTypes) => {
       as: 'orders'
     });
 
-    // ✅ Register hooks with models passed
+    // Register hooks with models passed
     registerCustomerHooks(Customer, models);
   };
 
   Customer.prototype.toJSON = function () {
-    const values = { ...this.get() };
+    const values = { ...this.get() }; // shallow copy of all fields int a new values object
     delete values.password;
     return values;
   };

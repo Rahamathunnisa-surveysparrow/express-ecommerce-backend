@@ -8,7 +8,7 @@ const statusQueue = new Queue('orderStatusQueue', {
   redis: redisConnection,
 });
 
-// MANDATORY line when using `.add('statusUpdate')`
+
 statusQueue.process('statusUpdate', statusUpdateProcessor);
 
 console.log('✅ Registered processor for statusUpdate job');

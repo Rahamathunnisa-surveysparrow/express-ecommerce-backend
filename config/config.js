@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load .env variables
+require('dotenv').config(); // Load sensitive information from .env file
 
 module.exports = {
   development: {
