@@ -1,77 +1,66 @@
-const { Customer } = require('../models');
+const { Customer, Order } = require('../models');
 const paginate = require('../utils/paginate');
+const sendPaginatedResponse = require('../utils/sendPaginatedResponse');
 
-// Get all customers (admin only or internal usage)
-const getAllCustomers = async (req, res) => {
-  try {
-    // Optionally restrict to admins only
-    // if (!req.customer || !req.customer.isAdmin) return res.status(403).json({ error: 'Forbidden' });
-
-    const { limit, offset, page } = paginate(req);
-    const { count, rows } = await Customer.findAndCountAll({
-      limit,
-      offset,
-      order: [['createdAt', 'DESC']],
-    });
-
-    const totalPages = Math.ceil(count / limit);
-
-    res.status(200).json({
-      data: rows,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        perPage: limit,
-        totalItems: count,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch customers', details: err.message });
-  }
-};
-
-// Get single customer by ID (only owner can view)
+// Get one customer (by ID)
 const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
-    const requestingCustomerId = req.customer.id;
 
-    if (parseInt(id) !== requestingCustomerId) {
-      return res.status(403).json({ error: 'Access denied: You can only view your own profile' });
+    if (+req.customer.id !== +id) {
+      return res.status(403).json({ error: 'Access denied: Not your data' });
     }
 
-    const customer = await Customer.findByPk(id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found with that ID' });
-    }
+    const customer = await Customer.findByPk(id, {
+      attributes: { exclude: ['password'] },
+    });
 
-    res.status(200).json(customer);
-  } catch (err) {
-    console.error("❌ Error fetching customer:", err);
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+    res.json(customer);
+  } catch (error) {
+    console.error('❌ Error fetching customer by ID:', error);
     res.status(500).json({ error: 'Failed to fetch customer' });
   }
 };
 
-// Full update (PUT)
+// Get all customers (paginated)
+const getAllCustomers = async (req, res) => {
+  try {
+    const { limit, offset, page } = paginate(req);
+
+    const { count, rows } = await Customer.findAndCountAll({
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['password'] },
+    });
+
+    return sendPaginatedResponse(res, 'customers', rows, count, limit, page);
+  } catch (error) {
+    console.error('❌ Error fetching customers:', error);
+    return res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+};
+
+// Update a customer (full update)
 const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const requestingCustomerId = req.customer.id;
 
-    if (parseInt(id) !== requestingCustomerId) {
-      return res.status(403).json({ error: 'Access denied: You can only update your own profile' });
+    if (+req.customer.id !== +id) {
+      return res.status(403).json({ error: 'Access denied: Not your data' });
     }
+
+    const customer = await Customer.findByPk(id);
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
     const { name, email, password } = req.body;
-    const customer = await Customer.findByPk(id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
 
     await customer.update({ name, email, password });
-    res.status(200).json({ message: 'Customer details updated successfully', customer });
-  } catch (err) {
-    console.error("❌ Error updating customer:", err);
+    res.json({ message: 'Customer updated', customer });
+  } catch (error) {
+    console.error('❌ Error updating customer:', error);
     res.status(500).json({ error: 'Failed to update customer' });
   }
 };
@@ -80,92 +69,60 @@ const updateCustomer = async (req, res) => {
 const patchCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const requestingCustomerId = req.customer.id;
 
-    if (parseInt(id) !== requestingCustomerId) {
-      return res.status(403).json({ error: 'Access denied: You can only patch your own profile' });
+    if (+req.customer.id !== +id) {
+      return res.status(403).json({ error: 'Access denied: Not your data' });
     }
+
+    const customer = await Customer.findByPk(id);
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
     const updates = req.body;
-    const customer = await Customer.findByPk(id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
-
     await customer.update(updates);
-    res.status(200).json({ message: 'Customer details updated!', customer });
-  } catch (err) {
-    console.error("❌ Error patching customer:", err);
+
+    res.json({ message: 'Customer partially updated', customer });
+  } catch (error) {
+    console.error('❌ Error patching customer:', error);
     res.status(500).json({ error: 'Failed to update customer' });
   }
 };
 
-// Soft delete customer (only self)
-const softDeleteCustomer = async (req, res) => {
+// Delete customer (only if no undelivered orders)
+const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const requestingCustomerId = req.customer.id;
 
-    if (parseInt(id) !== requestingCustomerId) {
-      return res.status(403).json({ error: 'Access denied: You can only delete your own account' });
+    if (+req.customer.id !== +id) {
+      return res.status(403).json({ error: 'Access denied: Not your data' });
     }
 
     const customer = await Customer.findByPk(id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+    const undeliveredOrders = await Order.count({
+      where: {
+        customer_id: id,
+        status: { [Op.not]: 'delivered' },
+        deleted_at: null
+      }
+    });
+
+    if (undeliveredOrders > 0) {
+      return res.status(400).json({ error: 'Customer has undelivered orders and cannot be deleted' });
     }
 
-    await customer.destroy(); // Hooks will check for undelivered orders
-    res.status(200).json({ message: 'Customer soft-deleted successfully' });
-  } catch (err) {
-    console.error("❌ Error deleting customer:", err);
-    res.status(500).json({ error: err.message || 'Failed to delete customer' });
+    await customer.destroy();
+    res.json({ message: 'Customer deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting customer:', error);
+    res.status(500).json({ error: 'Failed to delete customer' });
   }
 };
-
-// Restore soft-deleted customer (only self)
-const restoreCustomer = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const requestingCustomerId = req.customer.id;
-
-    console.log("🧾 Requested ID:", id);
-    console.log("🔐 Authenticated User ID:", requestingCustomerId);
-
-
-    console.log("Token belongs to:", requestingCustomerId);
-    console.log("Request param id:", id);
-
-    if (parseInt(id) !== requestingCustomerId) {
-      return res.status(403).json({ error: 'Access denied: You can only restore your own account' });
-    }
-
-    const customer = await Customer.findByPk(id, { paranoid: false });
-    console.log("🔍 Raw customer from DB:", customer);
-    console.log("🔍 Looking for customer ID:", id);
-    console.log("🧠 Fetched customer:", customer);
-
-
-    if (!customer) {
-      console.log("No customer found, even including soft-deleted ones.");
-      return res.status(404).json({ message: 'Customer not found' });
-    }
-
-    await customer.restore();
-    return res.status(200).json({ message: 'Customer restored successfully', customer });
-
-  } catch (err) {
-    console.error("❌ Error restoring customer:", err);
-    return res.status(500).json({ error: 'Failed to restore customer' });
-  }
-};
-
 
 module.exports = {
-  getAllCustomers,
   getCustomerById,
+  getAllCustomers,
   updateCustomer,
   patchCustomer,
-  softDeleteCustomer,
-  restoreCustomer
+  deleteCustomer
 };

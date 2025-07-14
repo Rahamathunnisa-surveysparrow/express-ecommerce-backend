@@ -2,34 +2,19 @@ const { Product } = require('../models');
 const paginate = require('../utils/paginate');
 const redisClient = require('../utils/redisClient');
 const client = require('../elasticsearch/client');
+const sendPaginatedResponse = require('../utils/sendPaginatedResponse');
 
-const getAllProducts = async (req, res) => {
+const createProduct = async (req, res) => {
   try {
-    const { limit, offset, page } = paginate(req);
-
-    const { count, rows } = await Product.findAndCountAll({
-      limit,
-      offset,
-      where: { deletedAt: null },
-      order: [['createdAt', 'DESC']],
-    });
-
-    const totalPages = Math.ceil(count / limit);
-
-    res.status(200).json({
-      data: rows,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        perPage: limit,
-        totalItems: count,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch products', details: err.message });
+    const { name, description, price, stock } = req.body;
+    const product = await Product.create({ name, description, price, stock });
+    res.status(201).json({ message: 'Product created successfully', product });
+  } catch (error) {
+    console.error("❌ Error creating product:", error);
+    res.status(500).json({ error: 'Failed to create product' });
   }
 };
-// Get one product with cache
+
 const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -46,7 +31,7 @@ const getProductById = async (req, res) => {
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
     await redisClient.set(cacheKey, JSON.stringify(product), {
-      EX: 300, // cache for 5 minutes
+      EX: 300,
     });
 
     console.log(`📦 Cached product ${id}`);
@@ -57,14 +42,20 @@ const getProductById = async (req, res) => {
   }
 };
 
-const createProduct = async (req, res) => {
+const getAllProducts = async (req, res) => {
   try {
-    const { name, description, price, stock } = req.body;
-    const product = await Product.create({ name, description, price, stock });
-    res.status(201).json({ message: 'Product created successfully', product });
-  } catch (error) {
-    console.error("❌ Error creating product:", error);
-    res.status(500).json({ error: 'Failed to create product' });
+    const { limit, offset, page } = paginate(req);
+
+    const { count, rows } = await Product.findAndCountAll({
+      limit,
+      offset,
+      where: { deletedAt: null },
+      order: [['createdAt', 'DESC']],
+    });
+
+    return sendPaginatedResponse(res, 'data', rows, count, limit, page);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch products', details: err.message });
   }
 };
 
@@ -143,7 +134,7 @@ const searchProducts = async (req, res) => {
       query: {
         multi_match: {
           query,
-          fields: ['name^2', 'description'], // ^2 boosts name relevance
+          fields: ['name^2', 'description'],
           fuzziness: 'auto'
         }
       }
@@ -162,9 +153,9 @@ const searchProducts = async (req, res) => {
 };
 
 module.exports = {
-  getAllProducts,
-  getProductById,
   createProduct,
+  getProductById,
+  getAllProducts,
   updateProduct,
   patchProduct,
   softDeleteProduct,

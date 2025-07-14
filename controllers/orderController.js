@@ -1,13 +1,9 @@
 const { Order, OrderItem, Product, sequelize, Customer } = require('../models');
-// const sendEmail = require('../utils/sendEmail');
 const { scheduleStatusUpdateJob } = require('../bull/jobs/statusUpdateJob');
 const redisClient = require('../utils/redisClient'); 
 const paginate = require('../utils/paginate');
 const sendPaginatedResponse = require('../utils/sendPaginatedResponse');
 const { invalidateOrderCache } = require('../utils/cacheHelpers');
-// const { validationResult } = require('express-validator');
-// const cancelOrderJob = require('../bull/jobs/cancelOrderJob');
-
 
 const createOrder = async (req, res) => {
   const { items } = req.body;
@@ -52,26 +48,9 @@ const createOrder = async (req, res) => {
 
       await order.update({ total_price: total }, { transaction: t });
 
-      // const customer = await Customer.findByPk(customer_id);
-      // if (customer) {
-      //   await sendEmail({
-      //     to: customer.email,
-      //     subject: 'Order Confirmation',
-      //     html: `
-      //       <h2>Order Confirmation</h2>
-      //       <p>Dear ${customer.name},</p>
-      //       <p>Your order <strong>#${order.id}</strong> has been placed successfully.</p>
-      //       <p>Total Amount: ₹${total.toFixed(2)}</p>
-      //       <p>Status: <strong>${order.status.toUpperCase()}</strong></p>
-      //       <p>Thank you for shopping with us!</p>
-      //     `
-      //   });
-      // }
-
       t.afterCommit(() => {
         scheduleStatusUpdateJob(order.id, 'pending');
       });
-
 
       return order;
     });
@@ -86,16 +65,12 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-
     if (!req.customer) {
-  return res.status(401).json({ error: 'Unauthorized: No customer attached' });
-}
-
-    // if (!req.customer.isAdmin) {
-    //   return res.status(403).json({ error: 'Access denied: Admins only' });
-    // }
+      return res.status(401).json({ error: 'Unauthorized: No customer attached' });
+    }
 
     const { limit, offset, page } = paginate(req);
+
     const { count, rows } = await Order.findAndCountAll({
       limit,
       offset,
@@ -110,16 +85,7 @@ const getAllOrders = async (req, res) => {
       ],
     });
 
-    const totalPages = Math.ceil(count / limit);
-    res.status(200).json({
-      data: rows,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        perPage: limit,
-        totalItems: count,
-      },
-    });
+    return sendPaginatedResponse(res, 'data', rows, count, limit, page);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch orders', details: err.message });
   }
@@ -168,7 +134,6 @@ const getOrderById = async (req, res) => {
   const cacheKey = `order:${orderId}`;
 
   try {
-    // Check Redis
     const cached = await redisClient.get(cacheKey);
     if (cached) {
       console.log(`📦 Redis cache HIT for ${cacheKey}`);
@@ -178,10 +143,9 @@ const getOrderById = async (req, res) => {
       }
       return res.status(200).json(parsed);
     }
-    // Using Cache when accessing order information
+
     console.log(`🚫 Redis cache MISS for ${cacheKey}, fetching from DB`);
 
-    // Query DB
     const order = await Order.findOne({
       where: { id: orderId },
       include: [
@@ -201,9 +165,8 @@ const getOrderById = async (req, res) => {
 
     const result = order.toJSON();
 
-    // Store in Redis
     await redisClient.set(cacheKey, JSON.stringify(result), {
-      EX: 300, // Expires in 300 seconds
+      EX: 300,
     });
 
     console.log(`✅ Cached order in Redis as ${cacheKey} (expires in 300s)`);
@@ -229,7 +192,9 @@ const getOrdersByCustomer = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found' });
     }
 
-    const orders = await Order.findAll({
+    const { limit, offset, page } = paginate(req);
+
+    const { count, rows } = await Order.findAndCountAll({
       where: { customer_id: customerId },
       include: [
         {
@@ -238,10 +203,12 @@ const getOrdersByCustomer = async (req, res) => {
           include: { model: Product, as: 'product', attributes: ['id', 'name', 'price'] }
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
     });
 
-    res.json({ customer: customer.name, orders });
+    return sendPaginatedResponse(res, 'orders', rows, count, limit, page);
   } catch (error) {
     console.error('❌ Get Orders by Customer error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -338,8 +305,7 @@ const softDeleteOrder = async (req, res) => {
     await order.update({ status: 'cancelled' }, { transaction });
     await order.destroy({ transaction });
 
-    await invalidateOrderCache(order.id); // Invalidate Cache when order is soft deleted
-
+    await invalidateOrderCache(order.id);
     await transaction.commit();
     res.status(200).json({ message: 'Order soft-deleted and stock restored' });
 
@@ -371,20 +337,15 @@ const restoreOrder = async (req, res) => {
       return res.status(400).json({ error: 'Order is not deleted' });
     }
 
-    // Restore the order and its items
     await order.restore({ transaction });
-
 
     for (const item of order.items) {
       await item.restore({ transaction });
     }
 
-
-    await invalidateOrderCache(order.id); // Invalidate Cache when order is restored
-    // Set status back to 'pending'
+    await invalidateOrderCache(order.id);
     await order.update({ status: 'pending' }, { transaction });
 
-    // Deduct stock again
     for (const item of order.items) {
       await Product.decrement(
         { stock: item.quantity },
@@ -393,8 +354,6 @@ const restoreOrder = async (req, res) => {
     }
 
     await transaction.commit();
-
-    // 🔁 Schedule status update lifecycle after commit
     scheduleStatusUpdateJob(order.id);
 
     res.status(200).json({ message: 'Order restored and status updates re-scheduled.', order });
@@ -406,9 +365,7 @@ const restoreOrder = async (req, res) => {
   }
 };
 
-
-module.exports = 
-{
+module.exports = {
   createOrder,
   getOrdersByCustomer,
   getAllOrders,
@@ -419,5 +376,3 @@ module.exports =
   softDeleteOrder,
   restoreOrder
 };
-
-

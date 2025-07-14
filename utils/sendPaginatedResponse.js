@@ -1,7 +1,6 @@
 // utils/sendPaginatedResponse.js
-module.exports = function sendPaginatedResponse(res, dataKey, dataRows, totalCount, limit, page) {
+module.exports = function sendPaginatedResponse(res, dataKey = 'data', dataRows, totalCount, limit, page) {
   const totalPages = Math.ceil(totalCount / limit);
-
   return res.status(200).json({
     [dataKey]: dataRows,
     pagination: {
@@ -12,3 +11,4 @@ module.exports = function sendPaginatedResponse(res, dataKey, dataRows, totalCou
     }
   });
 };
+
