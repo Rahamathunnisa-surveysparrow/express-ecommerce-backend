@@ -305,7 +305,7 @@ const softDeleteOrder = async (req, res) => {
     await order.update({ status: 'cancelled' }, { transaction });
     await order.destroy({ transaction });
 
-    await invalidateOrderCache(order.id);
+    // await invalidateOrderCache(order.id);
     await transaction.commit();
     res.status(200).json({ message: 'Order soft-deleted and stock restored' });
 
@@ -343,7 +343,7 @@ const restoreOrder = async (req, res) => {
       await item.restore({ transaction });
     }
 
-    await invalidateOrderCache(order.id);
+    // await invalidateOrderCache(order.id);
     await order.update({ status: 'pending' }, { transaction });
 
     for (const item of order.items) {
