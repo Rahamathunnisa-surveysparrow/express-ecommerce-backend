@@ -1,3 +1,5 @@
+const { noTrueLogging } = require('sequelize/lib/utils/deprecations');
+
 require('dotenv').config(); // Load sensitive information from .env file
 
 module.exports = {
@@ -7,7 +9,8 @@ module.exports = {
     database: process.env.PGDATABASE,
     host: process.env.PGHOST,
     port: process.env.PGPORT,
-    dialect: 'postgres'
+    dialect: 'postgres',
+    logging: true
   },
   test: {
     username: "root",
