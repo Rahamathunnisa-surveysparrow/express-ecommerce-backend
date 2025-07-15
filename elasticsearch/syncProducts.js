@@ -1,5 +1,5 @@
 // elasticsearch/syncProducts.js
-const client = require('./client');
+const client = require('./client'); // Elasticsearch client instance
 const { Product } = require('../models');
 
 const syncProductsToElasticsearch = async () => {
@@ -12,8 +12,9 @@ const syncProductsToElasticsearch = async () => {
     }
 
     console.log('🔄 Syncing products from DB to Elasticsearch...');
-    const products = await Product.findAll();
+    const products = await Product.findAll(); // use Sequelize to get all products from PostgreSQL.
 
+    // flatMap() flattens the array so it's in the required alternating structure
     const operations = products.flatMap(product => [
       { index: { _index: 'products', _id: product.id } },
       {
@@ -24,8 +25,9 @@ const syncProductsToElasticsearch = async () => {
       }
     ]);
 
-    if (operations.length > 0) {
-      await client.bulk({ refresh: true, operations });
+    // Bulk API is used for efficiently inserting/updating many documents at once
+    if (operations.length > 0) { 
+      await client.bulk({ refresh: true, operations }); //refresh: true makes the changes immediately searchable  
       console.log(`✅ Synced ${products.length} products to Elasticsearch.`);
     } else {
       console.log('ℹ️ No products to sync.');
