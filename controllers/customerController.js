@@ -88,7 +88,7 @@ const patchCustomer = async (req, res) => {
 };
 
 // Delete customer (only if no undelivered orders)
-const deleteCustomer = async (req, res) => {
+const softDeleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -119,10 +119,34 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
+// Restore soft-deleted customer (only self)
+const restoreCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requestingCustomerId = req.customer.id;
+
+    if (parseInt(id) !== requestingCustomerId) {
+      return res.status(403).json({ error: 'Access denied: You can only restore your own account' });
+    }
+
+    const customer = await Customer.findByPk(id, { paranoid: false });
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    await customer.restore();
+    res.status(200).json({ message: 'Customer restored successfully', customer });
+  } catch (err) {
+    console.error("❌ Error restoring customer:", err);
+    res.status(500).json({ error: 'Failed to restore customer' });
+  }
+};
+
 module.exports = {
   getCustomerById,
   getAllCustomers,
   updateCustomer,
   patchCustomer,
-  deleteCustomer
+  softDeleteCustomer,
+  restoreCustomer,
 };
